@@ -93,6 +93,12 @@ class StringExtractor {
 					$single_entry->context = $entry->context;
 				}
 				break;
+			case 'domain':
+				$entry->domain = $call['args'][$i];
+				foreach( $multiple as &$single_entry ) {
+					$single_entry->domain = $entry->domain;
+				}
+				break;
 			}
 		}
 		if ( isset( $call['line'] ) && $call['line'] ) {
