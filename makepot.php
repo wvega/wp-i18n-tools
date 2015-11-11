@@ -147,22 +147,11 @@ class MakePOT {
 		$this->extractor = new StringExtractor( $this->rules );
 	}
 
-	function __destruct() {
-		foreach ( $this->temp_files as $temp_file )
-			unlink( $temp_file );
-	}
-
-	function tempnam( $file ) {
-		$tempnam = tempnam( sys_get_temp_dir(), $file );
-		$this->temp_files[] = $tempnam;
-		return $tempnam;
-	}
-
 	function realpath_missing($path) {
 		return realpath(dirname($path)).DIRECTORY_SEPARATOR.basename($path);
 	}
 
-	function xgettext($project, $dir, $output_file, $placeholders = array(), $excludes = array(), $includes = array()) {
+	function xgettext($project, $dir, $output_file, $placeholders = array(), $excludes = array(), $includes = array(), $domain=null) {
 		$meta = array_merge( $this->meta['default'], $this->meta[$project] );
 		$placeholders = array_merge( $meta, $placeholders );
 		$meta['output'] = $this->realpath_missing( $output_file );
@@ -175,7 +164,16 @@ class MakePOT {
 
 		$originals = $this->extractor->extract_from_directory( $dir, $excludes, $includes );
 		$pot = new PO;
-		$pot->entries = $originals->entries;
+
+		if ( !empty( $domain ) ) {
+			foreach ( $originals->entries as &$entry ) {
+				if ( $entry->domain == $domain ) {
+					$pot->entries[] = $entry;
+				}
+			}
+		} else {
+			$pot->entries = $originals->entries;
+		}
 
 		$pot->set_header( 'Project-Id-Version', $meta['package-name'].' '.$meta['package-version'] );
 		$pot->set_header( 'Report-Msgid-Bugs-To', $meta['msgid-bugs-address'] );
@@ -442,7 +440,7 @@ class MakePOT {
 		$placeholders['slug'] = $slug;
 
 		$output = is_null($output)? "$slug.pot" : $output;
-		$res = $this->xgettext('wp-plugin', $dir, $output, $placeholders);
+		$res = $this->xgettext( 'wp-plugin', $dir, $output, $placeholders, array(), array(), $slug );
 		if (!$res) return false;
 		$potextmeta = new PotExtMeta;
 		$res = $potextmeta->append($main_file, $output);
@@ -556,13 +554,13 @@ class MakePOT {
 $included_files = get_included_files();
 if ($included_files[0] == __FILE__) {
 	$makepot = new MakePOT;
-	if ((3 == count($argv) || 4 == count($argv)) && in_array($method = str_replace('-', '_', $argv[1]), get_class_methods($makepot))) {
-		$res = call_user_func(array(&$makepot, $method), realpath($argv[2]), isset($argv[3])? $argv[3] : null);
+	if ((3 == count($argv) || 4 == count($argv) || 5 == count($argv)) && in_array($method = str_replace('-', '_', $argv[1]), get_class_methods($makepot))) {
+		$res = call_user_func(array(&$makepot, $method), realpath($argv[2]), isset($argv[3])? $argv[3] : null, isset($argv[4]) ? $argv[4] : null);
 		if (false === $res) {
 			fwrite(STDERR, "Couldn't generate POT file!\n");
 		}
 	} else {
-		$usage  = "Usage: php makepot.php PROJECT DIRECTORY [OUTPUT]\n\n";
+		$usage  = "Usage: php makepot.php PROJECT DIRECTORY [[OUTPUT [DOMAIN]]\n\n";
 		$usage .= "Generate POT file from the files in DIRECTORY [OUTPUT]\n";
 		$usage .= "Available projects: ".implode(', ', $makepot->projects)."\n";
 		fwrite(STDERR, $usage);
