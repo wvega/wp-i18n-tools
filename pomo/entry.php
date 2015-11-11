@@ -28,6 +28,7 @@ class Translation_Entry {
 	var $extracted_comments = '';
 	var $references = array();
 	var $flags = array();
+	var $domain = '';
 
 	/**
 	 * @param array $args associative array, support following keys:
